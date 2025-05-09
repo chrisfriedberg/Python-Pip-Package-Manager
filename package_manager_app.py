@@ -43,8 +43,43 @@ try:
 except ImportError:
     importlib_metadata = None
 
-# --- Constants ---
+# Platform detection
+IS_WINDOWS = sys.platform.startswith("win32")
+IS_MAC = sys.platform == "darwin"
+IS_LINUX = sys.platform.startswith("linux")
+
+# CREATE_NO_WINDOW flag
+if IS_WINDOWS:
+    from subprocess import CREATE_NO_WINDOW
+else:
+    CREATE_NO_WINDOW = 0
+
+# Python environment variables
+PYTHON_EXECUTABLE = sys.executable
+PYTHON_VERSION = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+PYTHON_BASE_DIR = os.path.dirname(PYTHON_EXECUTABLE)
+PYTHON_SCRIPTS_DIR = os.path.join(PYTHON_BASE_DIR, "Scripts" if IS_WINDOWS else "bin")
+PYTHON_SITE_PACKAGES = site.getsitepackages()[0] if site.getsitepackages() else None
+
+# Platform-specific app data directory
+if IS_MAC:
+    BASE_DATA_DIR = os.path.expanduser("~/Library/Application Support")
+elif IS_WINDOWS:
+    BASE_DATA_DIR = os.getenv('APPDATA') or os.path.expanduser("~\\AppData\\Roaming")
+else:
+    BASE_DATA_DIR = os.path.expanduser("~/.local/share")
+
 APP_NAME = "Python Global Package Manager (V1.19)"
+APP_DATA_DIR = os.path.join(BASE_DATA_DIR, "Python_Global_Package_Manager")
+LOG_FILE = os.path.join(APP_DATA_DIR, "package_manager.log")
+
+# Ensure app data directory exists
+try:
+    os.makedirs(APP_DATA_DIR, exist_ok=True)
+except Exception as e:
+    print(f"Error creating app data directory: {e}")
+
+# --- Constants ---
 GEOMETRY = "950x700"
 NUM_COLUMNS = 5
 LISTBOX_DEFAULT_HEIGHT = 20
@@ -60,32 +95,71 @@ MENU_FONT = ("Arial", 10)
 
 TITLE_BAR_COLOR = "#1A73E8"
 
-APP_DATA_DIR = os.path.join(os.getenv('APPDATA') or os.path.expanduser("~/.local/share"), APP_NAME.replace(" ", "_"))
-if not os.path.exists(APP_DATA_DIR):
-    try:
-        os.makedirs(APP_DATA_DIR)
-    except Exception as e:
-        print(f"Error creating app data directory {APP_DATA_DIR}: {e}")
 PACKAGE_NAME_CACHE_FILE = os.path.join(APP_DATA_DIR, "common_packages.json")
 ICON_LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app_icon_path.txt")
 
 # --- Helper Functions ---
 def get_pip_path():
-    python_dir = os.path.dirname(sys.executable)
-    pip_paths_to_check = [
-        os.path.join(python_dir, "Scripts", "pip.exe"), os.path.join(python_dir, "pip.exe"),
-        os.path.join(python_dir, "bin", "pip"), os.path.join(python_dir, "pip")
-    ]
-    for pp in pip_paths_to_check:
-        if os.path.exists(pp) and os.access(pp, os.X_OK):
-            return pp
+    """Get the path to pip executable, preferring the global Python installation."""
+    # First try to find pip in the global Python installation
+    if IS_WINDOWS:
+        # On Windows, check common installation paths
+        python_paths = [
+            os.path.join(os.environ.get('LOCALAPPDATA', ''), 'Programs', 'Python'),
+            os.path.join(os.environ.get('PROGRAMFILES', ''), 'Python'),
+            os.path.join(os.environ.get('PROGRAMFILES(X86)', ''), 'Python'),
+            r'C:\Python',
+            r'C:\Python3',
+            r'C:\Python39',
+            r'C:\Python310',
+            r'C:\Python311',
+            r'C:\Python312'
+        ]
+        for base_path in python_paths:
+            if os.path.exists(base_path):
+                for version_dir in os.listdir(base_path):
+                    if version_dir.startswith('Python'):
+                        pip_path = os.path.join(base_path, version_dir, 'Scripts', 'pip.exe')
+                        if os.path.exists(pip_path) and os.access(pip_path, os.X_OK):
+                            return pip_path
+    else:
+        # On Unix-like systems, check common paths
+        pip_paths = [
+            '/usr/bin/pip3',
+            '/usr/local/bin/pip3',
+            '/usr/bin/pip',
+            '/usr/local/bin/pip'
+        ]
+        for path in pip_paths:
+            if os.path.exists(path) and os.access(path, os.X_OK):
+                return path
+
+    # If global pip not found, try using the current Python's pip
     try:
-        pip_loc = subprocess.check_output(["where" if sys.platform == "win32" else "which", "pip"], text=True, errors='ignore').strip()
-        if pip_loc:
-            return pip_loc.splitlines()[0]
-    except (subprocess.CalledProcessError, FileNotFoundError):
+        if IS_WINDOWS:
+            result = subprocess.run(['where', 'pip'], capture_output=True, text=True, check=False)
+        else:
+            result = subprocess.run(['which', 'pip'], capture_output=True, text=True, check=False)
+        
+        if result.returncode == 0 and result.stdout.strip():
+            return result.stdout.strip().split('\n')[0]
+    except Exception:
         pass
+
     return None
+
+def get_python_env_info():
+    """Get information about the current Python environment."""
+    return {
+        'executable': PYTHON_EXECUTABLE,
+        'version': PYTHON_VERSION,
+        'base_dir': PYTHON_BASE_DIR,
+        'scripts_dir': PYTHON_SCRIPTS_DIR,
+        'site_packages': PYTHON_SITE_PACKAGES,
+        'platform': sys.platform,
+        'is_venv': hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix),
+        'venv_path': sys.prefix if hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix) else None
+    }
 
 def run_pip_command_live(command, output_queue, timeout=300):
     pip_path = get_pip_path()
@@ -97,7 +171,7 @@ def run_pip_command_live(command, output_queue, timeout=300):
         process = subprocess.Popen(
             full_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
             encoding=locale.getpreferredencoding(False) or 'utf-8', errors='replace',
-            bufsize=1, shell=False, env=os.environ.copy(), creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+            bufsize=1, shell=False, env=os.environ.copy(), creationflags=CREATE_NO_WINDOW if IS_WINDOWS else 0
         )
         def reader_thread(pipe, stream_name):
             try:
@@ -123,13 +197,19 @@ def run_pip_command(command, capture_output=True, text=True, check=False, timeou
     pip_path = get_pip_path()
     if not pip_path:
         return "PIP_NOT_FOUND"
+    
+    # Create a clean environment without VIRTUAL_ENV
+    env = os.environ.copy()
+    if 'VIRTUAL_ENV' in env:
+        del env['VIRTUAL_ENV']
+    
     full_command = [pip_path] + command
     try:
         return subprocess.run(
             full_command, capture_output=capture_output, text=text, check=check,
             encoding=locale.getpreferredencoding(False) or 'utf-8', errors='replace',
-            env=os.environ.copy(), timeout=timeout, shell=False,
-            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+            env=env, timeout=timeout, shell=False,
+            creationflags=CREATE_NO_WINDOW if IS_WINDOWS else 0
         )
     except Exception as e:
         print(f"Error in run_pip_command: {e}")
@@ -161,41 +241,143 @@ def get_installed_packages_fallback():
         return []
 
 def set_window_icon(window):
-    """Set the window icon using multiple methods for better compatibility."""
+    """Set the window icon using platform-specific methods."""
     try:
-        # Get the directory of the current script
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        icon_path = os.path.join(script_dir, "app_icon.ico")
         
-        if os.path.exists(icon_path):
-            # Method 1: Using iconbitmap (works on Windows)
-            try:
-                window.iconbitmap(icon_path)
-            except Exception as e:
-                print(f"iconbitmap failed: {e}")
-            
-            # Method 2: Using iconphoto (works on some Linux systems)
-            try:
-                photo = tk.PhotoImage(file=icon_path)
-                window.iconphoto(True, photo)
-            except Exception as e:
-                print(f"iconphoto failed: {e}")
-            
-            # Method 3: Using wm_iconbitmap (works on some Unix systems)
-            try:
-                window.wm_iconbitmap(icon_path)
-            except Exception as e:
-                print(f"wm_iconbitmap failed: {e}")
-                
-            print(f"Successfully attempted to set icon from: {icon_path}")
+        if IS_WINDOWS:
+            # Windows: Use .ico file
+            icon_path = os.path.join(script_dir, "app_icon.ico")
+            if os.path.exists(icon_path):
+                try:
+                    window.iconbitmap(icon_path)
+                except Exception as e:
+                    print(f"Windows iconbitmap failed: {e}")
         else:
-            print(f"Icon file not found at: {icon_path}")
+            # macOS/Linux: Use .png file
+            icon_path = os.path.join(script_dir, "app_icon_titlebar.png")
+            if os.path.exists(icon_path):
+                try:
+                    photo = tk.PhotoImage(file=icon_path)
+                    window.iconphoto(True, photo)
+                except Exception as e:
+                    print(f"iconphoto failed: {e}")
+                
+        print(f"Successfully attempted to set icon from: {icon_path}")
     except Exception as e:
         print(f"Error in set_window_icon: {e}")
+
+def log_package_action(action, package_name, version=None):
+    """Log package actions to the log file."""
+    try:
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with open(LOG_FILE, 'a', encoding='utf-8') as f:
+            if version:
+                f.write(f"{timestamp} - {action}: {package_name}=={version}\n")
+            else:
+                # Try to get version from installed packages
+                result = run_pip_command(["show", package_name], timeout=8)
+                if isinstance(result, subprocess.CompletedProcess) and result.returncode == 0:
+                    for line in result.stdout.splitlines():
+                        if line.startswith("Version:"):
+                            version = line.split(":", 1)[1].strip()
+                            f.write(f"{timestamp} - {action}: {package_name}=={version}\n")
+                            break
+                    else:
+                        f.write(f"{timestamp} - {action}: {package_name}\n")
+                else:
+                    f.write(f"{timestamp} - {action}: {package_name}\n")
+    except Exception as e:
+        print(f"Error writing to log file: {e}")
+
+def log_app_event(event_type):
+    """Log application events (start/stop)."""
+    try:
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with open(LOG_FILE, 'a', encoding='utf-8') as f:
+            f.write(f"{timestamp} - APPLICATION {event_type}\n")
+    except Exception as e:
+        print(f"Error writing to log file: {e}")
+
+def count_application_starts():
+    """Count the number of application starts in the log file."""
+    try:
+        if not os.path.exists(LOG_FILE):
+            return 0
+        count = 0
+        with open(LOG_FILE, 'r', encoding='utf-8') as f:
+            for line in f:
+                if "APPLICATION STARTED" in line:
+                    count += 1
+        return count
+    except Exception as e:
+        print(f"Error counting application starts: {e}")
+        return 0
+
+def truncate_log_file():
+    """Truncate the log file and add a header."""
+    try:
+        with open(LOG_FILE, 'w', encoding='utf-8') as f:
+            f.write(f"=== Python Global Package Manager Log ===\n")
+            f.write(f"Created: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"=======================================\n\n")
+        return True
+    except Exception as e:
+        print(f"Error truncating log file: {e}")
+        return False
+
+def initialize_log_file():
+    """Create log file if it doesn't exist and log application start."""
+    try:
+        # Ensure app data directory exists
+        os.makedirs(APP_DATA_DIR, exist_ok=True)
+        
+        # Create log file if it doesn't exist
+        if not os.path.exists(LOG_FILE):
+            with open(LOG_FILE, 'w', encoding='utf-8') as f:
+                f.write(f"=== Python Global Package Manager Log ===\n")
+                f.write(f"Created: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"=======================================\n\n")
+        
+        # Check if we need to truncate (after 14 starts)
+        if count_application_starts() >= 14:
+            truncate_log_file()
+        
+        # Log application start
+        log_app_event("STARTED")
+    except Exception as e:
+        print(f"Error initializing log file: {e}")
+
+def clear_log_file():
+    """Clear the log file."""
+    try:
+        with open(LOG_FILE, 'w', encoding='utf-8') as f:
+            f.write("")
+        return True
+    except Exception as e:
+        print(f"Error clearing log file: {e}")
+        return False
+
+def open_log_file():
+    """Open the log file in the default text editor."""
+    try:
+        if IS_WINDOWS:
+            os.startfile(LOG_FILE)
+        elif IS_MAC:
+            subprocess.run(['open', LOG_FILE])
+        else:  # Linux
+            subprocess.run(['xdg-open', LOG_FILE])
+        return True
+    except Exception as e:
+        print(f"Error opening log file: {e}")
+        return False
 
 class PackageManagerApp(ctk.CTk):
     def __init__(self):
         super().__init__()
+        
+        # Initialize log file
+        initialize_log_file()
         
         self.overrideredirect(True)
         self.drag_start_x = 0
@@ -258,6 +440,8 @@ class PackageManagerApp(ctk.CTk):
         # Menu Bar & Menus
         self.menu_bar_frame = ctk.CTkFrame(self, fg_color="transparent", height=30)
         self.menu_bar_frame.pack(fill="x")
+        
+        # File Menu
         self.file_button = ctk.CTkButton(self.menu_bar_frame, text="File", width=60, height=25, fg_color=MENU_BG_COLOR, hover_color=MENU_ACTIVE_BG_COLOR, text_color=MENU_FG_COLOR, font=MENU_FONT, command=self.show_file_menu, corner_radius=0)
         self.file_button.pack(side="left", padx=(5,0), pady=2)
         self.file_menu = tk.Menu(self, tearoff=0, bg=MENU_BG_COLOR, fg=MENU_FG_COLOR, activebackground=MENU_ACTIVE_BG_COLOR, activeforeground=MENU_FG_COLOR, font=MENU_FONT)
@@ -265,6 +449,21 @@ class PackageManagerApp(ctk.CTk):
         self.file_menu.add_command(label="Change Window Icon...", command=self.change_window_icon)
         self.file_menu.add_separator()
         self.file_menu.add_command(label="Exit", command=self.exit_application)
+
+        # Tools Menu
+        self.tools_button = ctk.CTkButton(self.menu_bar_frame, text="Tools", width=60, height=25, fg_color=MENU_BG_COLOR, hover_color=MENU_ACTIVE_BG_COLOR, text_color=MENU_FG_COLOR, font=MENU_FONT, command=self.show_tools_menu, corner_radius=0)
+        self.tools_button.pack(side="left", padx=(2,5), pady=2)
+        self.tools_menu = tk.Menu(self, tearoff=0, bg=MENU_BG_COLOR, fg=MENU_FG_COLOR, activebackground=MENU_ACTIVE_BG_COLOR, activeforeground=MENU_FG_COLOR, font=MENU_FONT)
+        
+        # Create Log submenu
+        self.log_menu = tk.Menu(self.tools_menu, tearoff=0, bg=MENU_BG_COLOR, fg=MENU_FG_COLOR, activebackground=MENU_ACTIVE_BG_COLOR, activeforeground=MENU_FG_COLOR, font=MENU_FONT)
+        self.log_menu.add_command(label="View Log", command=self.open_log)
+        self.log_menu.add_command(label="Clear Log", command=self.confirm_clear_log)
+        
+        # Add Log submenu to Tools menu
+        self.tools_menu.add_cascade(label="Log", menu=self.log_menu)
+
+        # Help Menu
         self.help_button = ctk.CTkButton(self.menu_bar_frame, text="Help", width=60, height=25, fg_color=MENU_BG_COLOR, hover_color=MENU_ACTIVE_BG_COLOR, text_color=MENU_FG_COLOR, font=MENU_FONT, command=self.show_help_menu, corner_radius=0)
         self.help_button.pack(side="left", padx=(2,5), pady=2)
         self.help_menu = tk.Menu(self, tearoff=0, bg=MENU_BG_COLOR, fg=MENU_FG_COLOR, activebackground=MENU_ACTIVE_BG_COLOR, activeforeground=MENU_FG_COLOR, font=MENU_FONT)
@@ -361,7 +560,7 @@ class PackageManagerApp(ctk.CTk):
 
     # --- Core Methods ---
     def relaunch_as_admin(self):
-        if sys.platform == "win32":
+        if IS_WINDOWS:
             try:
                 import ctypes
                 self.update_terminal_output("[Info] Attempting to re-launch as administrator...\n", "info")
@@ -405,7 +604,16 @@ class PackageManagerApp(ctk.CTk):
 
     def show_about_dialog(self):
         pip_path = get_pip_path() or "Not found"
-        msg = f"{APP_NAME}\n\nPython: {sys.executable}\nPip: {pip_path}\nData Dir: {APP_DATA_DIR}"
+        env_info = get_python_env_info()
+        msg = f"{APP_NAME}\n\n"
+        msg += f"Python: {env_info['executable']}\n"
+        msg += f"Version: {env_info['version']}\n"
+        msg += f"Platform: {env_info['platform']}\n"
+        msg += f"Environment: {'Virtual' if env_info['is_venv'] else 'Global'}\n"
+        if env_info['is_venv']:
+            msg += f"Venv Path: {env_info['venv_path']}\n"
+        msg += f"Pip: {pip_path}\n"
+        msg += f"Data Dir: {APP_DATA_DIR}"
         self._show_ctk_info_dialog("About & File Locations", msg)
 
     def show_exe_help_dialog(self):
@@ -431,6 +639,13 @@ class PackageManagerApp(ctk.CTk):
         dialog.wait_window()
 
     def load_common_package_names(self):
+        # Ensure app data directory exists
+        try:
+            os.makedirs(APP_DATA_DIR, exist_ok=True)
+        except Exception as e:
+            print(f"Error creating app data directory: {e}")
+            return []
+
         if not os.path.exists(PACKAGE_NAME_CACHE_FILE):
             dummy = ["requests", "numpy", "pandas", "matplotlib", "flask", "django", "customtkinter", "pillow", "packaging"]
             try:
@@ -649,6 +864,16 @@ class PackageManagerApp(ctk.CTk):
     def _install_package_task(self, package_name):
         self.output_queue.put(('info', f"--- Installing {package_name} ---\n"))
         rc = run_pip_command_live(["install", package_name], self.output_queue)
+        if rc == 0:
+            # Get installed version
+            result = run_pip_command(["show", package_name], timeout=8)
+            version = None
+            if isinstance(result, subprocess.CompletedProcess) and result.returncode == 0:
+                for line in result.stdout.splitlines():
+                    if line.startswith("Version:"):
+                        version = line.split(":", 1)[1].strip()
+                        break
+            log_package_action("INSTALLED", package_name, version)
         self.output_queue.put(('info', f"--- Install {package_name} finished (Code: {rc}) ---\n"))
         return rc
 
@@ -705,8 +930,19 @@ class PackageManagerApp(ctk.CTk):
     def _uninstall_package_task(self, pkg_names_list):
         overall_rc = 0
         for name in pkg_names_list:
+            # Get version before uninstalling
+            result = run_pip_command(["show", name], timeout=8)
+            version = None
+            if isinstance(result, subprocess.CompletedProcess) and result.returncode == 0:
+                for line in result.stdout.splitlines():
+                    if line.startswith("Version:"):
+                        version = line.split(":", 1)[1].strip()
+                        break
+            
             self.output_queue.put(('info', f"--- Uninstalling {name} ---\n"))
             rc = run_pip_command_live(["uninstall", "-y", name], self.output_queue)
+            if rc == 0:
+                log_package_action("UNINSTALLED", name, version)
             self.output_queue.put(('info', f"--- Uninstall {name} finished (Code: {rc}) ---\n"))
             overall_rc = rc if rc != 0 and overall_rc == 0 else overall_rc
         if overall_rc == 0:
@@ -751,6 +987,16 @@ class PackageManagerApp(ctk.CTk):
         for name in pkg_names_list:
             self.output_queue.put(('info', f"--- Updating {name} ---\n"))
             rc = run_pip_command_live(["install", "--upgrade", name], self.output_queue)
+            if rc == 0:
+                # Get new version after update
+                result = run_pip_command(["show", name], timeout=8)
+                version = None
+                if isinstance(result, subprocess.CompletedProcess) and result.returncode == 0:
+                    for line in result.stdout.splitlines():
+                        if line.startswith("Version:"):
+                            version = line.split(":", 1)[1].strip()
+                            break
+                log_package_action("UPDATED", name, version)
             self.output_queue.put(('info', f"--- Update {name} finished (Code: {rc}) ---\n"))
             overall_rc = rc if rc != 0 and overall_rc == 0 else overall_rc
         return overall_rc
@@ -833,8 +1079,9 @@ class PackageManagerApp(ctk.CTk):
                     pass
 
     def exit_application(self):
-        """Save icon path before exiting."""
+        """Save icon path and log application exit before closing."""
         self.save_icon_to_log()
+        log_app_event("CLOSED")
         print("Exiting application...")
         self.destroy()
 
@@ -934,9 +1181,22 @@ class PackageManagerApp(ctk.CTk):
         dialog.wait_window()
 
     def minimize_to_tray(self):
-        if pystray is None or not self.current_icon_path or not os.path.exists(self.current_icon_path):
+        """Minimize the application to system tray with platform-specific handling."""
+        if not pystray or IS_MAC:  # Skip tray on macOS or if pystray is not available
             self.iconify()
             return
+        
+        if IS_LINUX:
+            import importlib
+            if not importlib.util.find_spec("Xlib"):
+                print("python3-xlib not installed. System tray will not work on Linux.")
+                self.iconify()
+                return
+            
+        if not self.current_icon_path or not os.path.exists(self.current_icon_path):
+            self.iconify()
+            return
+        
         self.withdraw()
         self.is_in_tray = True
         image = Image.open(self.current_icon_path)
@@ -969,6 +1229,47 @@ class PackageManagerApp(ctk.CTk):
             var.set(value)
         self._on_checkbox_select()
 
+    def show_tools_menu(self):
+        self.tools_menu.post(self.tools_button.winfo_rootx(), self.tools_button.winfo_rooty() + self.tools_button.winfo_height())
+
+    def open_log(self):
+        if not os.path.exists(LOG_FILE):
+            self._show_ctk_message_dialog("Log File", "Log file does not exist yet.", dialog_type="info")
+            return
+        if open_log_file():
+            self.update_terminal_output("[Info] Opened log file.\n", "info")
+        else:
+            self._show_ctk_message_dialog("Error", "Could not open log file.", dialog_type="error")
+
+    def confirm_clear_log(self):
+        confirm = ctk.CTkToplevel(self)
+        confirm.title("Confirm Clear Log")
+        confirm.geometry("420x180")
+        confirm.transient(self)
+        confirm.grab_set()
+        if self.current_icon_path and os.path.exists(self.current_icon_path):
+            try:
+                confirm.iconbitmap(self.current_icon_path)
+            except Exception:
+                pass
+        ctk.CTkLabel(confirm, text="Are you sure you want to clear the log file?", font=("Arial", 13, "bold")).pack(pady=(15, 5))
+        btn_frame = ctk.CTkFrame(confirm, fg_color="transparent")
+        btn_frame.pack(pady=10)
+        result = {'ok': False}
+        def on_ok():
+            result['ok'] = True
+            confirm.destroy()
+        def on_cancel():
+            confirm.destroy()
+        ctk.CTkButton(btn_frame, text="OK", width=90, command=on_ok).pack(side="left", padx=10)
+        ctk.CTkButton(btn_frame, text="Cancel", width=90, command=on_cancel).pack(side="right", padx=10)
+        confirm.wait_window()
+        if result['ok']:
+            if clear_log_file():
+                self.update_terminal_output("[Info] Log file cleared.\n", "info")
+            else:
+                self._show_ctk_message_dialog("Error", "Could not clear log file.", dialog_type="error")
+
 class InstallPackageDialog(ctk.CTkToplevel):
     def __init__(self, master, title, common_packages, app_instance, icon_path=None):
         super().__init__(master)
@@ -998,7 +1299,7 @@ class InstallPackageDialog(ctk.CTkToplevel):
         self.install_btn = ctk.CTkButton(btn_frame, text="Install Package", command=self.on_install_button_pressed)
         self.install_btn.pack(side="left", expand=True, padx=5)
         self.cancel_btn = ctk.CTkButton(btn_frame, text="Cancel", command=self._on_cancel_dialog)
-        self.cancel_btn.pack(side="right", expand=True, padx=5)
+        self.cancel_btn.pack(side="right", padx=10, expand=True)
         self.update_search_results()
 
     def _on_cancel_dialog(self):
@@ -1099,7 +1400,7 @@ class ConfirmationDialog(ctk.CTkToplevel):
         self.destroy()
 
 if __name__ == "__main__":
-    if sys.platform == "win32":
+    if IS_WINDOWS:
         try:
             import ctypes
             app_id = f"MyCompany.{APP_NAME.replace(' ', '')}.GUI.1"
