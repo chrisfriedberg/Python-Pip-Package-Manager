@@ -204,12 +204,20 @@ def run_pip_command(command, capture_output=True, text=True, check=False, timeou
         del env['VIRTUAL_ENV']
     
     full_command = [pip_path] + command
+    
+    # Add startupinfo to prevent flickering CMD windows on Windows
+    startupinfo = None
+    if IS_WINDOWS:
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    
     try:
         return subprocess.run(
             full_command, capture_output=capture_output, text=text, check=check,
             encoding=locale.getpreferredencoding(False) or 'utf-8', errors='replace',
             env=env, timeout=timeout, shell=False,
-            creationflags=CREATE_NO_WINDOW if IS_WINDOWS else 0
+            creationflags=CREATE_NO_WINDOW if IS_WINDOWS else 0,
+            startupinfo=startupinfo  # Add startupinfo parameter
         )
     except Exception as e:
         print(f"Error in run_pip_command: {e}")
