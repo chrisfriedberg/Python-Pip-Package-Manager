@@ -8,7 +8,7 @@ def run_pipreqs(target_dir):
     try:
         result = subprocess.run([sys.executable, '-m', 'pip', 'install', 'pipreqs'], capture_output=True, text=True)
         print(result.stdout)
-        reqs_cmd = [sys.executable, '-m', 'pipreqs', target_dir, '--force']
+        reqs_cmd = [sys.executable, '-m', 'pipreqs.pipreqs', target_dir, '--force']
         result = subprocess.run(reqs_cmd, capture_output=True, text=True)
         print(result.stdout)
         if result.returncode != 0:
@@ -91,10 +91,23 @@ def analyze_requirements(target_dir):
     else:
         print("No obvious issues found. Your requirements.txt looks good!")
 
+def get_directory_from_files(file_paths):
+    if not file_paths:
+        return None
+    # Get the directory of the first file
+    first_file = file_paths[0]
+    return os.path.dirname(os.path.abspath(first_file))
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Generate and review requirements.txt using pipreqs and AI-powered checks.")
-    parser.add_argument('target_dir', help="Path to your project directory")
+    parser.add_argument('file_paths', nargs='+', help="Path(s) to Python file(s)")
     args = parser.parse_args()
-    if run_pipreqs(args.target_dir):
-        analyze_requirements(args.target_dir) 
+    
+    target_dir = get_directory_from_files(args.file_paths)
+    if target_dir:
+        print(f"Analyzing directory: {target_dir}")
+        if run_pipreqs(target_dir):
+            analyze_requirements(target_dir)
+    else:
+        print("No valid Python files provided!") 
