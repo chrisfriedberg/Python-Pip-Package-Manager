@@ -13,6 +13,7 @@ import site
 import webbrowser  # For opening PyPI search
 from PIL import Image, ImageTk  # <-- Add this import
 import datetime
+from venv_creator import VenvCreatorDialog  # Add this import
 # Add pystray import
 try:
     import pystray
@@ -470,6 +471,9 @@ class PackageManagerApp(ctk.CTk):
         
         # Add Log submenu to Tools menu
         self.tools_menu.add_cascade(label="Log", menu=self.log_menu)
+        
+        # Add Venv Creator to Tools menu
+        self.tools_menu.add_command(label="Create Virtual Environment", command=self.open_venv_creator)
 
         # Help Menu
         self.help_button = ctk.CTkButton(self.menu_bar_frame, text="Help", width=60, height=25, fg_color=MENU_BG_COLOR, hover_color=MENU_ACTIVE_BG_COLOR, text_color=MENU_FG_COLOR, font=MENU_FONT, command=self.show_help_menu, corner_radius=0)
@@ -1262,7 +1266,7 @@ class PackageManagerApp(ctk.CTk):
                 pass
         ctk.CTkLabel(confirm, text="Are you sure you want to clear the log file?", font=("Arial", 13, "bold")).pack(pady=(15, 5))
         btn_frame = ctk.CTkFrame(confirm, fg_color="transparent")
-        btn_frame.pack(pady=10)
+        btn_frame.pack(pady=10, fill="x", expand=True)
         result = {'ok': False}
         def on_ok():
             result['ok'] = True
@@ -1277,6 +1281,10 @@ class PackageManagerApp(ctk.CTk):
                 self.update_terminal_output("[Info] Log file cleared.\n", "info")
             else:
                 self._show_ctk_message_dialog("Error", "Could not clear log file.", dialog_type="error")
+
+    def open_venv_creator(self):
+        """Open the Virtual Environment Creator dialog."""
+        VenvCreatorDialog(master=self, icon_path=self.current_icon_path)
 
 class InstallPackageDialog(ctk.CTkToplevel):
     def __init__(self, master, title, common_packages, app_instance, icon_path=None):
