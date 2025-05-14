@@ -2039,8 +2039,8 @@ else:
 tray = QSystemTrayIcon(icon)
 menu = QMenu()
 
-# Read script name from .venv-association
-def get_script_name():
+# Read script name and venv path from .venv-association
+def get_config():
     config = {{}}
     assoc_file = os.path.join(os.path.dirname(__file__), ".venv-association")
     if os.path.exists(assoc_file):
@@ -2049,10 +2049,42 @@ def get_script_name():
                 if "=" in line:
                     key, value = line.strip().split("=", 1)
                     config[key] = value
-    return config.get("main_script", "main.py")
+    return config
 
-SCRIPT_NAME = get_script_name()
-VENV_PYTHON = os.path.join(os.path.dirname(__file__), 'venv', 'Scripts', 'pythonw.exe')
+config = get_config()
+SCRIPT_NAME = config.get("main_script", "main.py")
+venv_path = config.get("venv_path", "venv")
+
+def find_python():
+    """Find an appropriate Python executable to use"""
+    script_dir = os.path.dirname(__file__)
+    full_venv_path = os.path.join(script_dir, venv_path)
+    
+    # Check multiple possible Python executable locations
+    possible_paths = [
+        os.path.join(full_venv_path, "Scripts", "pythonw.exe"),
+        os.path.join(full_venv_path, "Scripts", "python.exe"),
+        os.path.join(full_venv_path, "bin", "python"),
+        "C:\\Program Files\\Python312\\pythonw.exe",
+        "C:\\Program Files\\Python311\\pythonw.exe",
+        "C:\\Program Files\\Python310\\pythonw.exe",
+        "C:\\Program Files\\Python39\\pythonw.exe",
+        "C:\\Python\\pythonw.exe"
+    ]
+    
+    for path in possible_paths:
+        if os.path.exists(path):
+            return path
+            
+    # No suitable Python found
+    return None
+
+VENV_PYTHON = find_python()
+
+if not VENV_PYTHON:
+    # If running in interpreter, print error
+    print("[ERROR] No suitable Python interpreter found. Exiting.")
+    sys.exit(1)
 
 # Example Exit action
 def kill_app():
