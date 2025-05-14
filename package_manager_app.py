@@ -477,7 +477,7 @@ class PackageManagerApp(ctk.CTk):
         self.tools_menu.add_cascade(label="Log", menu=self.log_menu)
         
         # Add Venv Creator to Tools menu
-        self.tools_menu.add_command(label="Create Virtual Environment", command=self.open_venv_creator)
+        self.tools_menu.add_command(label="Virtual Env and Script Association", command=self.open_venv_creator)
 
         # Help Menu
         self.help_button = ctk.CTkButton(self.menu_bar_frame, text="Help", width=60, height=25, fg_color=MENU_BG_COLOR, hover_color=MENU_ACTIVE_BG_COLOR, text_color=MENU_FG_COLOR, font=MENU_FONT, command=self.show_help_menu, corner_radius=0)
@@ -630,26 +630,26 @@ class PackageManagerApp(ctk.CTk):
             msg += f"Venv Path: {env_info['venv_path']}\n"
         msg += f"Pip: {pip_path}\n"
         msg += f"Data Dir: {APP_DATA_DIR}"
-        self._show_ctk_info_dialog("About & File Locations", msg)
+        self._show_ctk_message_dialog("About & File Locations", msg)
 
     def show_exe_help_dialog(self):
         msg = "Use PyInstaller: pyinstaller --onefile --windowed your_script.py"
-        self._show_ctk_info_dialog("Creating an EXE", msg)
+        self._show_ctk_message_dialog("Creating an EXE", msg)
 
-    def _show_ctk_info_dialog(self, title, message, icon_path=None):
+    def _show_ctk_message_dialog(self, title, message, dialog_type="info", icon_path=None):
         dialog = ctk.CTkToplevel(self)
         dialog.title(title)
         dialog.geometry("420x180")
         dialog.transient(self)
         dialog.grab_set()
-        # Set icon for dialog if app_icon.ico exists
         icon_path = icon_path or self.current_icon_path
         if icon_path and os.path.exists(icon_path):
             try:
                 dialog.iconbitmap(icon_path)
             except Exception:
                 pass
-        ctk.CTkLabel(dialog, text=title, font=("Arial", 14, "bold")).pack(pady=(15, 5))
+        color = {"info": "#1A73E8", "warning": "#F9A825", "error": "#D32F2F"}.get(dialog_type, "#1A73E8")
+        ctk.CTkLabel(dialog, text=title, font=("Arial", 14, "bold"), text_color=color).pack(pady=(15, 5))
         ctk.CTkLabel(dialog, text=message, font=("Arial", 11), wraplength=380, justify="left").pack(pady=(0, 10))
         ctk.CTkButton(dialog, text="OK", width=90, command=dialog.destroy).pack(pady=10)
         dialog.wait_window()
@@ -896,7 +896,7 @@ class PackageManagerApp(ctk.CTk):
     def uninstall_selected_package(self):
         sel_pkgs = self.get_selected_package_info()
         if not sel_pkgs:
-            self._show_ctk_info_dialog("No Selection", "Select package(s) to uninstall.", icon_path=self.current_icon_path)
+            self._show_ctk_message_dialog("No Selection", "Select package(s) to uninstall.", icon_path=self.current_icon_path)
             return
         names = [p['name'] for p in sel_pkgs]
         export_uninstall = tk.BooleanVar(value=False)
@@ -968,7 +968,7 @@ class PackageManagerApp(ctk.CTk):
     def update_python_packages(self):
         sel_pkgs = self.get_selected_package_info()
         if not sel_pkgs:
-            self._show_ctk_info_dialog("No Selection", "Select package(s) to update.", icon_path=self.current_icon_path)
+            self._show_ctk_message_dialog("No Selection", "Select package(s) to update.", icon_path=self.current_icon_path)
             return
         names = [p['name'] for p in sel_pkgs]
         confirm = ctk.CTkToplevel(self)
@@ -1019,7 +1019,7 @@ class PackageManagerApp(ctk.CTk):
 
     def export_package_list(self):
         if not self.displayed_packages:
-            self._show_ctk_info_dialog("No Packages", "List is empty.")
+            self._show_ctk_message_dialog("No Packages", "List is empty.")
             return
         fp = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text", "*.txt")], title="Save Package List", initialfile="requirements.txt")
         if not fp:
@@ -1029,13 +1029,13 @@ class PackageManagerApp(ctk.CTk):
                 for pkg in sorted(self.displayed_packages, key=lambda x: x['name'].lower()):
                     f.write(f"{pkg['name']}=={pkg['version']}\n")
             self.update_terminal_output(f"[Info] List exported to {fp}\n", "info")
-            self._show_ctk_info_dialog("Export Successful", f"Saved to:\n{fp}")
+            self._show_ctk_message_dialog("Export Successful", f"Saved to:\n{fp}")
         except Exception as e:
-            self._show_ctk_info_dialog("Export Error", f"Failed: {e}")
+            self._show_ctk_message_dialog("Export Error", f"Failed: {e}")
 
     def run_long_task(self, task_func, task_args, action_name="Action"):
         if not self.action_lock.acquire(blocking=False):
-            self._show_ctk_info_dialog("Busy", "Another operation is running.")
+            self._show_ctk_message_dialog("Busy", "Another operation is running.")
             return
         self.terminal_output.configure(state="normal")
         self.terminal_output.delete("1.0", tk.END)
@@ -1062,9 +1062,9 @@ class PackageManagerApp(ctk.CTk):
             def final_updates():
                 msg = f"{action_name} for '{task_args}' finished.\nStatus: {status}"
                 if status == "Success":
-                    self._show_ctk_info_dialog(f"{action_name} Status", msg)
+                    self._show_ctk_message_dialog(f"{action_name} Status", msg)
                 else:
-                    self._show_ctk_info_dialog(f"{action_name} Status", msg + "\nCheck terminal.")
+                    self._show_ctk_message_dialog(f"{action_name} Status", msg + "\nCheck terminal.")
                 self.action_lock.release()
                 self.after(500, self.trigger_refresh)
             if self.winfo_exists():
@@ -1178,24 +1178,6 @@ class PackageManagerApp(ctk.CTk):
             except Exception as e:
                 print(f"Error saving icon path to log: {e}")
 
-    def _show_ctk_message_dialog(self, title, message, dialog_type="info", icon_path=None):
-        dialog = ctk.CTkToplevel(self)
-        dialog.title(title)
-        dialog.geometry("420x180")
-        dialog.transient(self)
-        dialog.grab_set()
-        icon_path = icon_path or self.current_icon_path
-        if icon_path and os.path.exists(icon_path):
-            try:
-                dialog.iconbitmap(icon_path)
-            except Exception:
-                pass
-        color = {"info": "#1A73E8", "warning": "#F9A825", "error": "#D32F2F"}.get(dialog_type, "#1A73E8")
-        ctk.CTkLabel(dialog, text=title, font=("Arial", 14, "bold"), text_color=color).pack(pady=(15, 5))
-        ctk.CTkLabel(dialog, text=message, font=("Arial", 11), wraplength=380, justify="left").pack(pady=(0, 10))
-        ctk.CTkButton(dialog, text="OK", width=90, command=dialog.destroy).pack(pady=10)
-        dialog.wait_window()
-
     def minimize_to_tray(self):
         """Minimize the application to system tray with platform-specific handling."""
         if not pystray or IS_MAC:  # Skip tray on macOS or if pystray is not available
@@ -1288,7 +1270,10 @@ class PackageManagerApp(ctk.CTk):
 
     def open_venv_creator(self):
         """Open the Virtual Environment Creator dialog."""
-        VenvCreatorDialog(master=self, icon_path=self.current_icon_path)
+        # The VenvCreatorDialog now handles its own window management
+        # with proper centering and visibility
+        dialog = VenvCreatorDialog(master=self, icon_path=self.current_icon_path)
+        # No need for additional setup - the dialog handles it internally
 
 class InstallPackageDialog(ctk.CTkToplevel):
     def __init__(self, master, title, common_packages, app_instance, icon_path=None):

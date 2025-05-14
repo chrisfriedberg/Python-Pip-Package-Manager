@@ -1,18 +1,33 @@
 [
   {
-    "date": "2025-05-13 00:13:22",
-    "parent": "WhisperCreep",
-    "venv_path": "C:/Users/chris/Desktop/scripts/TheMudRoom/WhisperCreep\\venv",
-    "date_deleted": "2025-05-13 00:14:56"
+    "type": "association",
+    "date": "2025-05-14 14:37:40",
+    "script_path": "C:/Users/chris/Desktop/scripts/ICOSculpter/ICOSculpter.pyw",
+    "script_dir": "C:/Users/chris/Desktop/scripts/ICOSculpter",
+    "script_name": "ICOSculpter.pyw",
+    "venv_path": "C:/Users/chris/Desktop/scripts/ICOSculpter\\venv",
+    "script_last_modified": "2025-04-13 23:51:25",
+    "with_systray": true,
+    "with_startup": false,
+    "date_deleted": "2025-05-14 14:47:31"
   },
   {
-    "date": "2025-05-13 18:32:25",
-    "parent": "TrayRunner-PythonScripts",
-    "venv_path": "C:/Users/chris/Desktop/scripts/TrayRunner-PythonScripts\\venv"
+    "type": "venv",
+    "date": "2025-05-14 14:48:59",
+    "parent": "ICOSculpter",
+    "venv_path": "C:/Users/chris/Desktop/scripts/ICOSculpter\\venv",
+    "date_deleted": "2025-05-14 15:16:13"
   },
   {
-    "date": "2025-05-13 19:02:35",
-    "parent": "WhisperCreep",
-    "venv_path": "C:/Users/chris/Desktop/scripts/TheMudRoom/WhisperCreep\\venv"
+    "type": "association",
+    "date": "2025-05-14 15:13:32",
+    "script_path": "C:/Users/chris/Desktop/scripts/ICOSculpter/ICOSculpter.pyw",
+    "script_dir": "C:/Users/chris/Desktop/scripts/ICOSculpter",
+    "script_name": "ICOSculpter.pyw",
+    "venv_path": "C:/Users/chris/Desktop/scripts/ICOSculpter\\venv",
+    "script_last_modified": "2025-04-13 23:51:25",
+    "with_systray": true,
+    "with_startup": false,
+    "date_deleted": "2025-05-14 15:16:05"
   }
 ]
