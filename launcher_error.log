@@ -1,0 +1,3 @@
+ERROR: This app must be run from the venv at c:\Users\chris\Desktop\scripts\package_manager\venv.
+Current sys.prefix: C:\Program Files\Python312
+Please use the venv's python.exe or pythonw.exe.

@@ -1,5 +1,4 @@
 CTkToolTip==0.8
-CTkToolTip==0.8
 customtkinter==5.2.2
 packaging==25.0
 Pillow==11.2.1

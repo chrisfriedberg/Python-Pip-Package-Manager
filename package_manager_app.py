@@ -381,6 +381,10 @@ def open_log_file():
         print(f"Error opening log file: {e}")
         return False
 
+# When launching subprocesses, always use the venv Python path for venv-specific actions.
+# venv_python = os.path.join(os.path.dirname(__file__), 'venv', 'Scripts', 'python.exe')
+# Example: subprocess.run([venv_python, 'some_script.py'])
+
 class PackageManagerApp(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -935,7 +939,7 @@ class PackageManagerApp(ctk.CTk):
                         f.write(f"- {pkg['name']}=={pkg['version']}\n")
                 self.update_terminal_output(f"[Info] Uninstall list exported to {fp}\n", "info")
             except Exception as e:
-                self._show_ctk_info_dialog("Export Error", f"Failed to export uninstall list: {e}", icon_path=self.current_icon_path)
+                self._show_ctk_message_dialog("Export Error", f"Failed to export uninstall list: {e}", icon_path=self.current_icon_path)
                 return
         self.run_long_task(self._uninstall_package_task, names, "Uninstall")
 

@@ -1,0 +1,2 @@
+venv_path=venv
+main_script=package_manager_app.py 
