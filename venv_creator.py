@@ -647,9 +647,11 @@ class VenvCreatorDialog(ctk.CTkToplevel):
                 requirements = [pkg for pkg in self.req_listbox.get(0, tk.END) if not is_stdlib_module(pkg)]
                 skipped = [pkg for pkg in self.req_listbox.get(0, tk.END) if is_stdlib_module(pkg)]
                 
-                # Always add PySide6 to requirements for tray functionality
+                # Always add PySide6 and customtkinter to requirements
                 if "PySide6" not in requirements:
                     requirements.append("PySide6")
+                if "customtkinter" not in requirements:
+                    requirements.append("customtkinter")
                 
                 # Create requirements.txt
                 req_file = os.path.join(venv_path, "requirements.txt")
@@ -784,16 +786,17 @@ class VenvCreatorDialog(ctk.CTkToplevel):
         # Create content
         msg = ""
         
-        # First, identify if PySide6 was installed and remove it from the regular success list
+        # First, identify if PySide6 or customtkinter were installed and remove them from the regular success list
         auto_installed = []
-        if "PySide6" in success:
-            success.remove("PySide6")
-            auto_installed.append("PySide6")
+        for pkg in ["PySide6", "customtkinter"]:
+            if pkg in success:
+                success.remove(pkg)
+                auto_installed.append(pkg)
         
         # Show auto-installed packages first
         if auto_installed:
-            msg += "⚙️ Automatically installed packages:\n" + "\n".join(auto_installed) + " (required for system tray support)\n\n"
-            
+            msg += "⚙️ Automatically installed packages:\n" + ", ".join(auto_installed) + " (required for UI and system tray support)\n\n"
+        
         # Then show regular packages
         if success:
             msg += "✔️ Packages successfully installed:\n" + "\n".join(success) + "\n\n"
@@ -1885,8 +1888,16 @@ class VenvCreatorDialog(ctk.CTkToplevel):
                                     text_widget.insert("end", "Association Files Present: ", "subheading")
                                     text_widget.insert("end", ", ".join(existing_files) + "\n", "normal")
                                 else:
+                                    # Check if venv was deleted
+                                    venv_deleted = False
+                                    for venv_entry in data:
+                                        if venv_entry.get("type") == "venv" and venv_entry.get("venv_path") == venv_path and venv_entry.get("date_deleted"):
+                                            venv_deleted = True
+                                            break
                                     if date_deleted:
                                         text_widget.insert("end", "No Association Files Present (Deleted through app)\n", "deleted")
+                                    elif venv_deleted:
+                                        text_widget.insert("end", "No Association Files Present (Deleted due to venv deletion)\n", "deleted")
                                     else:
                                         text_widget.insert("end", "No Association Files Present (Manual Delete Detected Outside of App)\n", "deleted")
                             else:
@@ -2014,6 +2025,9 @@ import subprocess
 from PySide6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
 from PySide6.QtGui import QIcon, QAction, QPixmap, QPainter, QColor, QBrush
 
+# Debug mode flag - set to True to see console output and use python.exe
+DEBUG_MODE = False
+
 # Initialize QApplication first
 app = QApplication(sys.argv)
 app.setQuitOnLastWindowClosed(False)
@@ -2056,20 +2070,23 @@ SCRIPT_NAME = config.get("main_script", "main.py")
 venv_path = config.get("venv_path", "venv")
 
 def find_python():
-    """Find an appropriate Python executable to use"""
+    """Find an appropriate Python executable to use based on DEBUG_MODE"""
     script_dir = os.path.dirname(__file__)
     full_venv_path = os.path.join(script_dir, venv_path)
     
+    # Choose python executable based on debug mode
+    python_exe = "python.exe" if DEBUG_MODE else "pythonw.exe"
+    
     # Check multiple possible Python executable locations
     possible_paths = [
-        os.path.join(full_venv_path, "Scripts", "pythonw.exe"),
-        os.path.join(full_venv_path, "Scripts", "python.exe"),
+        os.path.join(full_venv_path, "Scripts", python_exe),
+        os.path.join(full_venv_path, "Scripts", "python.exe"),  # Always check python.exe as fallback
         os.path.join(full_venv_path, "bin", "python"),
-        "C:\\Program Files\\Python312\\pythonw.exe",
-        "C:\\Program Files\\Python311\\pythonw.exe",
-        "C:\\Program Files\\Python310\\pythonw.exe",
-        "C:\\Program Files\\Python39\\pythonw.exe",
-        "C:\\Python\\pythonw.exe"
+        os.path.join(r"C:\Program Files\Python312", python_exe),
+        os.path.join(r"C:\Program Files\Python311", python_exe),
+        os.path.join(r"C:\Program Files\Python310", python_exe),
+        os.path.join(r"C:\Program Files\Python39", python_exe),
+        os.path.join(r"C:\Python", python_exe)
     ]
     
     for path in possible_paths:
@@ -2106,12 +2123,33 @@ if not QSystemTrayIcon.isSystemTrayAvailable() or not tray.isVisible():
 else:
     print("[DEBUG] Tray icon is visible.")
 
+# Verify script exists before launching
+script_path = os.path.join(os.path.dirname(__file__), SCRIPT_NAME)
+if not os.path.exists(script_path):
+    print(f"[ERROR] Script file not found: {{script_path}}")
+    sys.exit(3)
+
 try:
-    process = subprocess.Popen(
-        [VENV_PYTHON, SCRIPT_NAME],
-        cwd=os.path.dirname(__file__),
-        creationflags=subprocess.CREATE_NO_WINDOW
-    )
+    # Prepare command
+    cmd = [VENV_PYTHON, SCRIPT_NAME]
+    
+    # Print command in debug mode
+    if DEBUG_MODE:
+        print(f"[DEBUG] Running command: {{' '.join(cmd)}}")
+    
+    # Launch process with or without console based on debug mode
+    if DEBUG_MODE:
+        process = subprocess.Popen(
+            cmd,
+            cwd=os.path.dirname(__file__)
+        )
+    else:
+        process = subprocess.Popen(
+            cmd,
+            cwd=os.path.dirname(__file__),
+            creationflags=subprocess.CREATE_NO_WINDOW
+        )
+    
     print(f"[DEBUG] Launched process PID: {{process.pid}}")
 except Exception as e:
     print(f"[ERROR] Failed to launch script: {{str(e)}}")

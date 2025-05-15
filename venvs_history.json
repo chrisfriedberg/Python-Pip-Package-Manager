@@ -1,33 +1,75 @@
 [
   {
+    "type": "venv",
+    "date": "2025-05-14 18:36:22",
+    "parent": "TabTaboo",
+    "venv_path": "C:/Users/chris/Desktop/scripts/TabTaboo\\venv",
+    "date_deleted": "2025-05-14 19:08:07"
+  },
+  {
     "type": "association",
-    "date": "2025-05-14 14:37:40",
-    "script_path": "C:/Users/chris/Desktop/scripts/ICOSculpter/ICOSculpter.pyw",
-    "script_dir": "C:/Users/chris/Desktop/scripts/ICOSculpter",
-    "script_name": "ICOSculpter.pyw",
-    "venv_path": "C:/Users/chris/Desktop/scripts/ICOSculpter\\venv",
-    "script_last_modified": "2025-04-13 23:51:25",
+    "date": "2025-05-14 18:36:41",
+    "script_path": "C:/Users/chris/Desktop/scripts/TabTaboo/tabtabooNEW.pyw",
+    "script_dir": "C:/Users/chris/Desktop/scripts/TabTaboo",
+    "script_name": "tabtabooNEW.pyw",
+    "venv_path": "C:/Users/chris/Desktop/scripts/TabTaboo\\venv",
+    "script_last_modified": "2025-04-30 16:56:44",
     "with_systray": true,
     "with_startup": false,
-    "date_deleted": "2025-05-14 14:47:31"
+    "date_deleted": "2025-05-14 18:40:02"
   },
   {
     "type": "venv",
-    "date": "2025-05-14 14:48:59",
-    "parent": "ICOSculpter",
-    "venv_path": "C:/Users/chris/Desktop/scripts/ICOSculpter\\venv",
-    "date_deleted": "2025-05-14 15:16:13"
+    "date": "2025-05-14 18:41:40",
+    "parent": "TabTaboo",
+    "venv_path": "C:/Users/chris/Desktop/scripts/TabTaboo\\venv",
+    "date_deleted": "2025-05-14 19:08:07"
   },
   {
     "type": "association",
-    "date": "2025-05-14 15:13:32",
-    "script_path": "C:/Users/chris/Desktop/scripts/ICOSculpter/ICOSculpter.pyw",
-    "script_dir": "C:/Users/chris/Desktop/scripts/ICOSculpter",
-    "script_name": "ICOSculpter.pyw",
-    "venv_path": "C:/Users/chris/Desktop/scripts/ICOSculpter\\venv",
-    "script_last_modified": "2025-04-13 23:51:25",
+    "date": "2025-05-14 18:42:06",
+    "script_path": "C:/Users/chris/Desktop/scripts/TabTaboo/tabtabooNEW.pyw",
+    "script_dir": "C:/Users/chris/Desktop/scripts/TabTaboo",
+    "script_name": "tabtabooNEW.pyw",
+    "venv_path": "C:/Users/chris/Desktop/scripts/TabTaboo\\venv",
+    "script_last_modified": "2025-04-30 16:56:44",
     "with_systray": true,
     "with_startup": false,
-    "date_deleted": "2025-05-14 15:16:05"
+    "date_deleted": "2025-05-14 19:04:21"
+  },
+  {
+    "type": "venv",
+    "date": "2025-05-14 19:05:40",
+    "parent": "TabTaboo",
+    "venv_path": "C:/Users/chris/Desktop/scripts/TabTaboo\\venv",
+    "date_deleted": "2025-05-14 19:08:07"
+  },
+  {
+    "type": "association",
+    "date": "2025-05-14 19:06:18",
+    "script_path": "C:/Users/chris/Desktop/scripts/TabTaboo/tabtabooNEW.pyw",
+    "script_dir": "C:/Users/chris/Desktop/scripts/TabTaboo",
+    "script_name": "tabtabooNEW.pyw",
+    "venv_path": "C:/Users/chris/Desktop/scripts/TabTaboo\\venv",
+    "script_last_modified": "2025-04-30 16:56:44",
+    "with_systray": true,
+    "with_startup": false
+  },
+  {
+    "type": "venv",
+    "date": "2025-05-14 19:09:35",
+    "parent": "TabTaboo",
+    "venv_path": "C:/Users/chris/Desktop/scripts/TabTaboo\\venv"
+  },
+  {
+    "type": "association",
+    "date": "2025-05-14 19:09:46",
+    "script_path": "C:/Users/chris/Desktop/scripts/TabTaboo/tabtabooNEW.pyw",
+    "script_dir": "C:/Users/chris/Desktop/scripts/TabTaboo",
+    "script_name": "tabtabooNEW.pyw",
+    "venv_path": "C:/Users/chris/Desktop/scripts/TabTaboo\\venv",
+    "script_last_modified": "2025-04-30 16:56:44",
+    "with_systray": true,
+    "with_startup": false
   }
 ]
