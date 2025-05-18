@@ -858,13 +858,13 @@ class PackageManagerApp(ctk.CTk):
             count = len(sel_pkg_info)
             self.description_textbox.insert("1.0", f"Selected {count} package(s):\n\n")
             for i, p_info in enumerate(sel_pkg_info):
-                if i < 5 or count <= 5:
-                    self.description_textbox.insert(tk.END, f"{p_info['name']}=={p_info['version']}\nSummary:\n{get_package_summary(p_info['name'])}\n\n")
-                elif i == 5:
-                    self.description_textbox.insert(tk.END, f"...and {count-5} more.\n")
+                if i < 10 or count <= 10:
+                    self.description_textbox.insert(tk.END, f"{p_info['name']}=={p_info['version']}\n")
+                elif i == 10:
+                    self.description_textbox.insert(tk.END, f"...and {count-10} more.\n")
                     break
         else:
-            self.description_textbox.insert("1.0", "Select package(s) to see summary.")
+            self.description_textbox.insert("1.0", "Select package(s) to see names.")
         self.description_textbox.configure(state="disabled")
 
     def _clear_selection_and_description(self):
