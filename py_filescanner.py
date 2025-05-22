@@ -248,40 +248,66 @@ class ReviewDialog(QDialog):
     def __init__(self, items_to_delete, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Review & Confirm Files for Deletion Queue")
-        self.setMinimumSize(800, 450) 
+        self.setMinimumSize(1000, 600)  # Make dialog larger to match main window better
         self.items_to_delete_initially = list(items_to_delete) 
         self._debug_log_func = parent.debug_window.log_message if hasattr(parent, 'debug_window') and hasattr(parent.debug_window, 'log_message') else logger.info
+        self._debug_log_func(f"REVIEW DEBUG: ReviewDialog initialized with {len(self.items_to_delete_initially)} items to review", "INFO")
+        
+        # Debug log each item for visibility
+        for i, (dir_path, file_name) in enumerate(self.items_to_delete_initially):
+            self._debug_log_func(f"REVIEW DEBUG: Item {i+1}: {dir_path} / {file_name}", "INFO")
+            
         self._setup_ui()
         self._populate_table()
         self._debug_log_func(f"ReviewDialog initialized with {len(self.items_to_delete_initially)} items.", "INFO")
 
     def _setup_ui(self):
+        # Main layout
         self.layout = QVBoxLayout(self)
+        
+        # Instructions label
         instructions = QLabel("<b>Review files to be added to the deletion queue.</b> Uncheck items you do NOT want to queue.")
         instructions.setTextFormat(Qt.RichText)
         self.layout.addWidget(instructions)
 
+        # Create the table widget - mirroring the main app's table setup
         self.table = QTableWidget(0, 3) 
         self.table.setHorizontalHeaderLabels(["Queue?", "Directory", "Filename"])
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents) 
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)        
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)        
-        self.table.setSortingEnabled(True) 
+        
+        # Table selection and behavior settings - similar to main app
+        self.table.setSortingEnabled(True)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers) 
+        self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.table.setAlternatingRowColors(True)  # Alternating row colors like main app
+        
+        # Column resize modes like the main app
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Interactive)
+        
+        # Set initial column widths for better visibility
+        self.table.setColumnWidth(0, 80)    # Queue? column
+        self.table.setColumnWidth(1, 500)   # Directory column (wider)
+        self.table.setColumnWidth(2, 300)   # Filename column
+        
         self.layout.addWidget(self.table)
 
+        # Button layout
         dialog_button_layout = QHBoxLayout()
+        
+        # Export button
         self.export_button = QPushButton("Export List for Deletion")
         self.export_button.clicked.connect(self.export_deletion_list)
         dialog_button_layout.addWidget(self.export_button)
         dialog_button_layout.addStretch()
 
+        # Confirm button
         self.confirm_button = QPushButton("Add Checked to Deletion Queue")
         self.confirm_button.clicked.connect(self.accept)
         self.confirm_button.setDefault(True) 
         dialog_button_layout.addWidget(self.confirm_button)
 
+        # Cancel button
         self.cancel_button = QPushButton("Cancel")
         self.cancel_button.clicked.connect(self.reject)
         dialog_button_layout.addWidget(self.cancel_button)
@@ -290,29 +316,105 @@ class ReviewDialog(QDialog):
         self.setLayout(self.layout)
 
     def _populate_table(self):
-        self.table.setRowCount(len(self.items_to_delete_initially))
+        """Populate table with the items to be reviewed, mirror of main app's populate_table_view"""
+        # Clear table and set row count
+        self.table.setRowCount(0)  # Clear table first
+        total_items = len(self.items_to_delete_initially)
+        self._debug_log_func(f"REVIEW DEBUG: About to populate table with {total_items} items", "INFO")
+        
+        # Disable sorting during population
+        self.table.setSortingEnabled(False)
+        
+        # Set exact row count
+        self.table.setRowCount(total_items)
+        
+        # Populate each row
         for row_idx, (dir_path, file_name) in enumerate(self.items_to_delete_initially):
+            self._debug_log_func(f"REVIEW DEBUG: Setting row {row_idx} with {dir_path} / {file_name}", "INFO")
+            
+            # Checkbox item for Queue? column
             checkbox_item = QTableWidgetItem()
             checkbox_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
             checkbox_item.setCheckState(Qt.Checked) 
-            self.table.setItem(row_idx, 0, checkbox_item)
+            
+            # Directory item
             dir_item = QTableWidgetItem(dir_path)
-            file_item = QTableWidgetItem(file_name)
             dir_item.setFlags(dir_item.flags() & ~Qt.ItemIsEditable)
+            
+            # Filename item
+            file_item = QTableWidgetItem(file_name)
             file_item.setFlags(file_item.flags() & ~Qt.ItemIsEditable)
+            
+            # Set each item in the table
+            self.table.setItem(row_idx, 0, checkbox_item)
             self.table.setItem(row_idx, 1, dir_item)
             self.table.setItem(row_idx, 2, file_item)
-        self.table.resizeColumnsToContents() 
+            
+            # Verify items were set correctly
+            verify_checkbox = self.table.item(row_idx, 0)
+            verify_dir = self.table.item(row_idx, 1)
+            verify_file = self.table.item(row_idx, 2)
+            
+            if verify_checkbox and verify_dir and verify_file:
+                self._debug_log_func(f"REVIEW DEBUG: Successfully set row {row_idx}", "INFO")
+            else:
+                self._debug_log_func(f"REVIEW DEBUG: Failed to set items for row {row_idx}", "ERROR")
+        
+        # Re-enable sorting after population
+        self.table.setSortingEnabled(True)
+        
+        # Final check of row count
+        final_rows = self.table.rowCount()
+        self._debug_log_func(f"REVIEW DEBUG: Table populated, final row count: {final_rows}", "INFO")
+        
+        # Make column width adjustments
+        self.table.setColumnWidth(0, 80)        # Queue? column
+        self.table.setColumnWidth(1, 500)       # Directory column
+        self.table.setColumnWidth(2, 300)       # Filename column
 
     def get_items_confirmed_for_queue(self):
         """Get items that are still checked to be added to the deletion queue."""
         confirmed_items = []
-        for row in range(self.table.rowCount()):
-            if self.table.item(row, 0).checkState() == Qt.Checked:
-                dir_path = self.table.item(row, 1).text()
-                file_name = self.table.item(row, 2).text()
-                confirmed_items.append((dir_path, file_name))
-        self._debug_log_func(f"ReviewDialog returning {len(confirmed_items)} items confirmed for deletion queue.", "INFO")
+        total_rows = self.table.rowCount()
+        self._debug_log_func(f"REVIEW DEBUG: Retrieving confirmed items from {total_rows} rows", "INFO")
+        
+        for row in range(total_rows):
+            self._debug_log_func(f"REVIEW DEBUG: Processing row {row} for confirmation", "INFO")
+            
+            # Check that all necessary items exist
+            checkbox_item = self.table.item(row, 0)
+            dir_item = self.table.item(row, 1)
+            file_item = self.table.item(row, 2)
+            
+            # Log the state of each item for debugging
+            has_checkbox = checkbox_item is not None
+            has_dir = dir_item is not None
+            has_file = file_item is not None
+            self._debug_log_func(f"REVIEW DEBUG: Row {row} items - Checkbox: {has_checkbox}, Dir: {has_dir}, File: {has_file}", "INFO")
+            
+            # Only process if all items exist
+            if checkbox_item and dir_item and file_item:
+                # Check if the checkbox is checked
+                is_checked = checkbox_item.checkState() == Qt.Checked
+                self._debug_log_func(f"REVIEW DEBUG: Row {row} checkbox state: {'Checked' if is_checked else 'Unchecked'}", "INFO")
+                
+                if is_checked:
+                    dir_path = dir_item.text()
+                    file_name = file_item.text()
+                    self._debug_log_func(f"REVIEW DEBUG: Adding row {row} to confirmed items: {dir_path} / {file_name}", "INFO")
+                    confirmed_items.append((dir_path, file_name))
+                else:
+                    self._debug_log_func(f"REVIEW DEBUG: Row {row} is unchecked - skipping", "INFO")
+            else:
+                # Access the items from the original list for this row
+                if row < len(self.items_to_delete_initially):
+                    orig_dir, orig_file = self.items_to_delete_initially[row]
+                    self._debug_log_func(f"REVIEW DEBUG: Row {row} missing table items, but found in original list: {orig_dir} / {orig_file}", "WARNING")
+                    confirmed_items.append((orig_dir, orig_file))
+                else:
+                    self._debug_log_func(f"REVIEW DEBUG: Row {row} missing data and not found in original list", "WARNING")
+                
+        self._debug_log_func(f"REVIEW DEBUG: ReviewDialog returning {len(confirmed_items)} items confirmed for deletion queue.", "INFO")
         return confirmed_items
 
     def export_deletion_list(self):
@@ -418,17 +520,18 @@ class FileScannerApp(QWidget):
 
         # --- Action Buttons Layout ---
         action_buttons_layout = QHBoxLayout()
+        
+        # Left side buttons
         self.queue_delete_button = QPushButton("Queue Selected for Deletion...")
         self.queue_delete_button.setIcon(self.style().standardIcon(QStyle.SP_DialogApplyButton)) 
         self.queue_delete_button.clicked.connect(self.queue_selected_files_for_deletion)
         action_buttons_layout.addWidget(self.queue_delete_button)
-        action_buttons_layout.addStretch(1)
-
+        
         self.clear_queued_button = QPushButton("Clear Queued Deletions")
         self.clear_queued_button.setIcon(self.style().standardIcon(QStyle.SP_DialogCancelButton))
         self.clear_queued_button.clicked.connect(self.clear_all_queued_deletions)
         action_buttons_layout.addWidget(self.clear_queued_button)
-
+        
         # Queue counter and Execute Button in a horizontal layout
         queue_execute_layout = QHBoxLayout()
         self.queue_counter_label = QLabel("0")
@@ -446,6 +549,15 @@ class FileScannerApp(QWidget):
         queue_execute_layout.setSpacing(5)
         
         action_buttons_layout.addLayout(queue_execute_layout)
+        
+        # Middle stretch
+        action_buttons_layout.addStretch(1)
+        
+        # Right side buttons
+        self.export_button = QPushButton("Export Current List")
+        self.export_button.setIcon(self.style().standardIcon(QStyle.SP_FileDialogContentsView))
+        self.export_button.clicked.connect(self.export_current_list)
+        action_buttons_layout.addWidget(self.export_button)
         
         self.close_app_button = QPushButton("Close Application") 
         self.close_app_button.setIcon(self.style().standardIcon(QStyle.SP_DialogCloseButton))
@@ -638,41 +750,88 @@ class FileScannerApp(QWidget):
             QMessageBox.critical(self, "Error", f"Could not open directory. Error: {e}")
 
     def queue_selected_files_for_deletion(self):
+        # Get the currently selected rows
         selected_items_indices = self.table.selectionModel().selectedRows() 
+        self.debug_window.log_message(f"SELECTION DEBUG: Number of rows selected: {len(selected_items_indices)}", "INFO")
+        
         if not selected_items_indices:
             QMessageBox.information(self, "No Selection", "Please select one or more files to queue for deletion.")
             return
 
         items_to_review = []
-        for model_index in selected_items_indices:
+        self.debug_window.log_message(f"SELECTION DEBUG: Processing {len(selected_items_indices)} selected rows", "INFO")
+        
+        # Collect details about all selections for debugging
+        selection_details = []
+        for i, model_index in enumerate(selected_items_indices):
             row = model_index.row()
-            if self.table.isRowHidden(row): continue
-            # Prevent re-queuing already queued files
-            status_item = self.table.item(row, 4)
-            if status_item and status_item.text() == "Queued for Deletion":
+            selection_details.append(f"Selection {i+1}: Row {row}")
+        self.debug_window.log_message(f"SELECTION DEBUG: Selection details: {', '.join(selection_details)}", "INFO")
+        
+        # For each selected row
+        for i, model_index in enumerate(selected_items_indices):
+            row = model_index.row()
+            self.debug_window.log_message(f"SELECTION DEBUG: Processing selection {i+1}, row {row}", "INFO")
+            
+            # Skip if row is hidden
+            if self.table.isRowHidden(row):
+                self.debug_window.log_message(f"SELECTION DEBUG: Row {row} is hidden - skipping", "INFO")
                 continue
+            
+            # Get all column items for this row to ensure we're looking at the right data
             try:
-                dir_item = self.table.item(row, 0)
-                file_item = self.table.item(row, 1)
-                if dir_item and file_item:
-                    items_to_review.append((dir_item.text(), file_item.text()))
+                dir_item = self.table.item(row, 0)  # Directory column
+                file_item = self.table.item(row, 1)  # Filename column
+                created_item = self.table.item(row, 2)  # Created column
+                modified_item = self.table.item(row, 3)  # Modified column
+                status_item = self.table.item(row, 4)  # Status column
+                
+                # Debug log all column values for this row
+                dir_text = dir_item.text() if dir_item else "None"
+                file_text = file_item.text() if file_item else "None"
+                created_text = created_item.text() if created_item else "None"
+                modified_text = modified_item.text() if modified_item else "None"
+                status_text = status_item.text() if status_item else "None"
+                
+                self.debug_window.log_message(
+                    f"SELECTION DEBUG: Row {row} data - Dir: {dir_text}, File: {file_text}, "
+                    f"Created: {created_text}, Modified: {modified_text}, Status: {status_text}", "INFO")
+                
+                # Check if already queued
+                if status_item and status_item.text() == "Queued for Deletion":
+                    self.debug_window.log_message(f"SELECTION DEBUG: Row {row} already queued for deletion - skipping", "INFO")
+                    continue
+                
+                # Verify both directory and filename exist
+                if dir_item is not None and file_item is not None:
+                    items_to_review.append((dir_text, file_text))
+                    self.debug_window.log_message(f"SELECTION DEBUG: Row {row} - Added to review list: {dir_text} / {file_text}", "INFO")
+                else:
+                    self.debug_window.log_message(f"SELECTION DEBUG: Row {row} - Skipping: Missing dir or file item", "WARNING")
+                    
             except Exception as e:
-                self.debug_window.log_message(f"Error preparing file at visible row {row} for review dialog: {e}", "ERROR")
+                self.debug_window.log_message(f"SELECTION DEBUG: Error processing row {row}: {str(e)}", "ERROR")
 
+        self.debug_window.log_message(f"SELECTION DEBUG: Finished processing selections. Added {len(items_to_review)} items to review list", "INFO")
+        
         if not items_to_review:
             QMessageBox.information(self, "No New Items", "No new files selected to queue (already queued or no selection).")
             return
 
+        self.debug_window.log_message(f"SELECTION DEBUG: Creating ReviewDialog with {len(items_to_review)} items", "INFO")
         review_dialog = ReviewDialog(items_to_review, self)
+        
         if review_dialog.exec(): 
             items_confirmed_for_queue = review_dialog.get_items_confirmed_for_queue()
+            self.debug_window.log_message(f"SELECTION DEBUG: ReviewDialog returned {len(items_confirmed_for_queue)} confirmed items", "INFO")
+            
             if items_confirmed_for_queue:
                 for dir_path, file_name in items_confirmed_for_queue:
                     self.files_queued_for_deletion.add((dir_path, file_name))
                     # Update status in self.current_scanned_files_data
                     for data_entry in self.current_scanned_files_data:
                         if data_entry.get("directory") == dir_path and data_entry.get("filename") == file_name:
-                            data_entry["status"] = "Queued for Deletion" # This might not be needed if populate_table_view checks the set
+                            data_entry["status"] = "Queued for Deletion" 
                             break
                 self.debug_window.log_message(f"Added {len(items_confirmed_for_queue)} items to deletion queue.", "INFO")
                 self.populate_table_view() # Refresh table to show new statuses
@@ -793,10 +952,212 @@ class FileScannerApp(QWidget):
         else:
             self.queue_counter_label.setStyleSheet("color: gray; font-weight: normal; font-size: 14px;")
 
+    def export_current_list(self):
+        items_to_export = self.current_scanned_files_data
+        if not items_to_export:
+            QMessageBox.information(self, "No Items to Export", "No files are currently scanned.")
+            return
+
+        # Create file format selection dialog
+        format_dialog = QDialog(self)
+        format_dialog.setWindowTitle("Select Export Format")
+        format_dialog.setMinimumWidth(300)
+        format_layout = QVBoxLayout(format_dialog)
+        
+        format_label = QLabel("<b>Select Export Format:</b>")
+        format_layout.addWidget(format_label)
+        
+        # Format selection buttons
+        csv_button = QPushButton("CSV")
+        xlsx_button = QPushButton("XLSX")
+        txt_button = QPushButton("TXT")
+        pdf_button = QPushButton("PDF")
+        
+        format_layout.addWidget(csv_button)
+        format_layout.addWidget(xlsx_button)
+        format_layout.addWidget(txt_button)
+        format_layout.addWidget(pdf_button)
+        
+        selected_format = [None]  # Using list to store value by reference
+        
+        def set_format(fmt):
+            selected_format[0] = fmt
+            format_dialog.accept()
+            
+        csv_button.clicked.connect(lambda: set_format("csv"))
+        xlsx_button.clicked.connect(lambda: set_format("xlsx"))
+        txt_button.clicked.connect(lambda: set_format("txt"))
+        pdf_button.clicked.connect(lambda: set_format("pdf"))
+        
+        cancel_button = QPushButton("Cancel")
+        cancel_button.clicked.connect(format_dialog.reject)
+        format_layout.addWidget(cancel_button)
+        
+        format_dialog.exec()
+        
+        # If dialog was canceled or no format selected
+        if not selected_format[0]:
+            return
+            
+        file_format = selected_format[0]
+        self.debug_window.log_message(f"Selected export format: {file_format}", "INFO")
+        
+        # Set default filename and filter based on selected format
+        if file_format == "csv":
+            default_filename = f"ScannedFiles_{QDate.currentDate().toString('yyyy-MM-dd')}.csv"
+            file_filter = "CSV Files (*.csv);;All Files (*)"
+        elif file_format == "xlsx":
+            default_filename = f"ScannedFiles_{QDate.currentDate().toString('yyyy-MM-dd')}.xlsx"
+            file_filter = "Excel Files (*.xlsx);;All Files (*)"
+        elif file_format == "pdf":
+            default_filename = f"ScannedFiles_{QDate.currentDate().toString('yyyy-MM-dd')}.pdf"
+            file_filter = "PDF Files (*.pdf);;All Files (*)"
+        else:  # txt format
+            default_filename = f"ScannedFiles_{QDate.currentDate().toString('yyyy-MM-dd')}.txt"
+            file_filter = "Text Files (*.txt);;All Files (*)"
+        
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, 
+            "Save Scanned Files List", 
+            str(Path.home() / default_filename),
+            file_filter
+        )
+        
+        if not file_path:
+            return
+            
+        try:
+            if file_format == "csv":
+                self.export_to_csv(file_path, items_to_export)
+            elif file_format == "xlsx":
+                self.export_to_xlsx(file_path, items_to_export)
+            elif file_format == "pdf":
+                self.export_to_pdf(file_path, items_to_export)
+            else:  # txt format
+                self.export_to_txt(file_path, items_to_export)
+                
+            QMessageBox.information(self, "Export Successful", f"Scanned files list exported to:\n{file_path}")
+            self.debug_window.log_message(f"Scanned files list exported to {file_path}", "INFO")
+        except Exception as e:
+            QMessageBox.critical(self, "Export Error", f"Could not export scanned files list: {e}")
+            self.debug_window.log_message(f"Error exporting scanned files list: {e}", "ERROR")
+    
+    def export_to_txt(self, file_path, items_to_export):
+        """Export data to a text file."""
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(f"Scanned Files List - {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write("=" * 40 + "\n")
+            f.write("Files scanned:\n\n")
+            for file_entry in items_to_export:
+                f.write(f"Directory: {file_entry['directory']}\nFilename:  {file_entry['filename']}\n")
+                f.write(f"Created: {file_entry['created']}\nModified: {file_entry['modified']}\n")
+                f.write(f"Status: {file_entry['status']}\n---\n")
+    
+    def export_to_csv(self, file_path, items_to_export):
+        """Export data to a CSV file."""
+        import csv
+        with open(file_path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow(['Directory', 'Filename', 'Created', 'Modified', 'Status'])
+            for file_entry in items_to_export:
+                writer.writerow([
+                    file_entry['directory'],
+                    file_entry['filename'],
+                    file_entry['created'],
+                    file_entry['modified'],
+                    file_entry['status']
+                ])
+    
+    def export_to_xlsx(self, file_path, items_to_export):
+        """Export data to an Excel file."""
+        try:
+            import openpyxl
+            from openpyxl.styles import Font
+            
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Scanned Files"
+            
+            # Add header row with bold font
+            headers = ['Directory', 'Filename', 'Created', 'Modified', 'Status']
+            bold_font = Font(bold=True)
+            for col_num, header in enumerate(headers, 1):
+                cell = ws.cell(row=1, column=col_num, value=header)
+                cell.font = bold_font
+            
+            # Add data rows
+            for row_num, file_entry in enumerate(items_to_export, 2):
+                ws.cell(row=row_num, column=1, value=file_entry['directory'])
+                ws.cell(row=row_num, column=2, value=file_entry['filename'])
+                ws.cell(row=row_num, column=3, value=file_entry['created'])
+                ws.cell(row=row_num, column=4, value=file_entry['modified'])
+                ws.cell(row=row_num, column=5, value=file_entry['status'])
+            
+            # Auto-adjust column widths
+            for col in ws.columns:
+                max_length = 0
+                column = col[0].column_letter
+                for cell in col:
+                    if cell.value:
+                        max_length = max(max_length, len(str(cell.value)))
+                adjusted_width = max_length + 2
+                ws.column_dimensions[column].width = adjusted_width
+            
+            wb.save(file_path)
+        except ImportError:
+            raise Exception("Excel export requires the openpyxl module. Please install it with 'pip install openpyxl'.")
+    
+    def export_to_pdf(self, file_path, items_to_export):
+        """Export data to a PDF file."""
+        try:
+            from reportlab.lib import colors
+            from reportlab.lib.pagesizes import letter, landscape
+            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
+            from reportlab.lib.styles import getSampleStyleSheet
+            
+            doc = SimpleDocTemplate(file_path, pagesize=landscape(letter))
+            
+            # Create the data for the table
+            styles = getSampleStyleSheet()
+            title_style = styles['Heading1']
+            data = [['Directory', 'Filename', 'Created', 'Modified', 'Status']]
+            
+            for file_entry in items_to_export:
+                data.append([
+                    file_entry['directory'],
+                    file_entry['filename'],
+                    file_entry['created'],
+                    file_entry['modified'],
+                    file_entry['status']
+                ])
+            
+            # Create the table
+            table = Table(data, repeatRows=1)
+            
+            # Style the table
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ]))
+            
+            # Create title
+            title = Paragraph(f"Scanned Files List - {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", title_style)
+            
+            # Build the PDF
+            elements = [title, table]
+            doc.build(elements)
+        except ImportError:
+            raise Exception("PDF export requires the reportlab module. Please install it with 'pip install reportlab'.")
+
 
 def main():
-    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
-    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
+    # Remove deprecated high DPI scaling attributes
+    # Modern Qt versions handle high DPI scaling automatically
     app = QApplication(sys.argv)
     main_window = FileScannerApp()
     main_window.show()
