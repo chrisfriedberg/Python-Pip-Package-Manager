@@ -460,6 +460,7 @@ class PackageManagerApp(ctk.CTk):
         self.file_menu = tk.Menu(self, tearoff=0, bg=MENU_BG_COLOR, fg=MENU_FG_COLOR, activebackground=MENU_ACTIVE_BG_COLOR, activeforeground=MENU_FG_COLOR, font=MENU_FONT)
         self.file_menu.add_command(label="Re-launch as Administrator", command=self.relaunch_as_admin)
         self.file_menu.add_command(label="Change Window Icon...", command=self.change_window_icon)
+        self.file_menu.add_command(label="Python Script Delete", command=self.open_python_file_scanner)
         self.file_menu.add_separator()
         self.file_menu.add_command(label="Exit", command=self.exit_application)
 
@@ -1274,6 +1275,22 @@ class PackageManagerApp(ctk.CTk):
         # with proper centering and visibility
         dialog = VenvCreatorDialog(master=self, icon_path=self.current_icon_path)
         # No need for additional setup - the dialog handles it internally
+
+    def open_python_file_scanner(self):
+        """Open the Python File Scanner in a new window."""
+        try:
+            script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "py_filescanner.py")
+            if os.path.exists(script_path):
+                self.update_terminal_output("[Info] Starting Python File Scanner...\n", "info")
+                if IS_WINDOWS:
+                    subprocess.Popen([sys.executable, script_path], creationflags=CREATE_NO_WINDOW)
+                else:
+                    subprocess.Popen([sys.executable, script_path])
+            else:
+                self.update_terminal_output("[Error] Could not find py_filescanner.py\n", "error")
+                messagebox.showerror("File Not Found", "Could not find py_filescanner.py script")
+        except Exception as e:
+            self.update_terminal_output(f"[Error] Failed to launch Python File Scanner: {e}\n", "error")
 
 class InstallPackageDialog(ctk.CTkToplevel):
     def __init__(self, master, title, common_packages, app_instance, icon_path=None):

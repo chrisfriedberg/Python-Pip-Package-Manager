@@ -1,1 +1,1 @@
-c:\Users\chris\Desktop\scripts\package_manager\app_icon.ico
+C:\Users\chris\Desktop\scripts\Python-Pip-Package-Manager\app_icon.ico
