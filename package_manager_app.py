@@ -461,6 +461,7 @@ class PackageManagerApp(ctk.CTk):
         self.file_menu.add_command(label="Re-launch as Administrator", command=self.relaunch_as_admin)
         self.file_menu.add_command(label="Change Window Icon...", command=self.change_window_icon)
         self.file_menu.add_command(label="Python Script Delete", command=self.open_python_file_scanner)
+        self.file_menu.add_command(label="Py Requirements Scraper", command=self.open_requirements_collector)
         self.file_menu.add_separator()
         self.file_menu.add_command(label="Exit", command=self.exit_application)
 
@@ -1229,6 +1230,14 @@ class PackageManagerApp(ctk.CTk):
         self._on_checkbox_select()
 
     def show_tools_menu(self):
+        if not hasattr(self, 'tools_menu'):
+            self.tools_menu = tk.Menu(self, tearoff=0, bg=MENU_BG_COLOR, fg=MENU_FG_COLOR, activebackground=MENU_ACTIVE_BG_COLOR, font=MENU_FONT)
+            self.tools_menu.add_command(label="Virtual Environment Creator", command=self.open_venv_creator)
+            self.tools_menu.add_command(label="Python File Scanner", command=self.open_python_file_scanner)
+            self.tools_menu.add_command(label="Py Requirements Scraper", command=self.open_requirements_collector)
+            self.tools_menu.add_separator()
+            self.tools_menu.add_command(label="Open Log File", command=self.open_log)
+            self.tools_menu.add_command(label="Clear Log File", command=self.confirm_clear_log)
         self.tools_menu.post(self.tools_button.winfo_rootx(), self.tools_button.winfo_rooty() + self.tools_button.winfo_height())
 
     def open_log(self):
@@ -1291,6 +1300,22 @@ class PackageManagerApp(ctk.CTk):
                 messagebox.showerror("File Not Found", "Could not find py_filescanner.py script")
         except Exception as e:
             self.update_terminal_output(f"[Error] Failed to launch Python File Scanner: {e}\n", "error")
+
+    def open_requirements_collector(self):
+        """Open the Python Requirements Collector in a new window."""
+        try:
+            script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "script_requirements_collector.py")
+            if os.path.exists(script_path):
+                self.update_terminal_output("[Info] Starting Py Requirements Scraper...\n", "info")
+                if IS_WINDOWS:
+                    subprocess.Popen([sys.executable, script_path], creationflags=CREATE_NO_WINDOW)
+                else:
+                    subprocess.Popen([sys.executable, script_path])
+            else:
+                self.update_terminal_output("[Error] Could not find script_requirements_collector.py\n", "error")
+                messagebox.showerror("File Not Found", "Could not find script_requirements_collector.py script")
+        except Exception as e:
+            self.update_terminal_output(f"[Error] Failed to launch Py Requirements Scraper: {e}\n", "error")
 
 class InstallPackageDialog(ctk.CTkToplevel):
     def __init__(self, master, title, common_packages, app_instance, icon_path=None):

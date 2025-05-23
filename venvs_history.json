@@ -1,1 +1,9 @@
-[]
+[
+  {
+    "type": "venv",
+    "date": "2025-05-23 18:51:50",
+    "parent": "TestVenv",
+    "venv_path": "C:/Users/chris/Downloads/TestVenv\\venv",
+    "date_deleted": "2025-05-23 18:52:07"
+  }
+]
